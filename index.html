@@ -98,7 +98,7 @@
     let videoInterval;
 
     async function loadModel() {
-      model = await tf.loadLayersModel('model/model.json');
+      model = await tf.loadLayersModel('model.json');
       document.getElementById("result").innerText = "Modèle prêt ✅";
     }
 
