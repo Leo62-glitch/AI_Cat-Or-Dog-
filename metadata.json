@@ -1,0 +1,1 @@
+{"tfjsVersion":"1.7.0","imageSize":224,"modelName":"vittascience-ai-interface","packageVersion":"0.8.3","packageName":"@teachablemachine/image","timeStamp":"2025-07-15T15:25:32.059Z","userMetadata":{},"labels":["Chat","Chien"],"setting":{"denseUnits":100,"epochs":50,"learningRate":0.001,"batchSize":16}}
