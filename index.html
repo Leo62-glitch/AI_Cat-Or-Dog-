@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Détection Chat ou Chien</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f0f4f8, #e0eafc);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .app {
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      max-width: 600px;
+      width: 90%;
+      text-align: center;
+    }
+
+    h1 {
+      color: #2b2d42;
+      margin-bottom: 20px;
+      font-size: 2em;
+    }
+
+    input[type="file"],
+    button {
+      margin: 10px 5px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    input[type="file"] {
+      background-color: #dee2e6;
+      color: #212529;
+    }
+
+    button {
+      background-color: #4dabf7;
+      color: white;
+    }
+
+    button:hover {
+      background-color: #339af0;
+    }
+
+    #preview, #video {
+      max-width: 100%;
+      margin-top: 20px;
+      border-radius: 10px;
+      display: none;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #2f9e44;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>🐾 IA : Chat ou Chien ?</h1>
+    <input type="file" accept="image/*" id="imageInput"><br>
+    <button onclick="startCamera()">📷 Caméra</button>
+    <button onclick="stopCamera()">❌ Stop</button>
+
+    <video id="video" autoplay muted playsinline></video>
+    <img id="preview" alt="Aperçu image">
+    <canvas id="canvas" width="224" height="224" class="hidden"></canvas>
+
+    <p id="result">Chargement du modèle...</p>
+  </div>
+
+  <script>
+    let model;
+    let videoInterval;
+
+    async function loadModel() {
+      model = await tf.loadLayersModel('model/model.json');
+      document.getElementById("result").innerText = "Modèle prêt ✅";
+    }
+
+    async function preprocessImage(img) {
+      return tf.tidy(() =>
+        tf.browser.fromPixels(img)
+          .resizeNearestNeighbor([224, 224])
+          .toFloat()
+          .div(tf.scalar(255))
+          .expandDims()
+      );
+    }
+
+    async function predictImage(source) {
+      const input = await preprocessImage(source);
+      const prediction = await model.predict(input).data();
+      input.dispose();
+
+      const classes = ['Chat', 'Chien'];
+      const index = prediction[0] > prediction[1] ? 0 : 1;
+      const confidence = (prediction[index] * 100).toFixed(1);
+      document.getElementById("result").innerText = Résultat : ${classes[index]} (${confidence}%);
+    }
+
+    document.getElementById("imageInput").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.getElementById("preview");
+        img.src = e.target.result;
+        img.onload = () => predictImage(img);
+
+        img.style.display = "block";
+        document.getElementById("video").style.display = "none";
+      };
+      reader.readAsDataURL(file);
+    });
+
+    async function startCamera() {
+      const video = document.getElementById("video");
+      const preview = document.getElementById("preview");
+      preview.style.display = "none";
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        video.style.display = "block";
+
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        videoInterval = setInterval(() => {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          predictImage(canvas);
+        }, 1000);
+      } catch (err) {
+        alert("Erreur d'accès caméra : " + err.message);
+      }
+    }
+
+    function stopCamera() {
+      const video = document.getElementById("video");
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+      clearInterval(videoInterval);
+      video.style.display = "none";
+      document.getElementById("result").innerText = "Caméra arrêtée.";
+    }
+
+    loadModel();
+  </script>
+</body>
+</html>
